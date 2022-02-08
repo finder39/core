@@ -277,6 +277,7 @@ class DeviceBroker:
         self._regenerate_token_remove = None
         self._assignments = self._assign_capabilities(devices)
         self.devices = {device.device_id: device for device in devices}
+        self.device_non_main_components = {}
         self.scenes = {scene.scene_id: scene for scene in scenes}
 
     def _assign_capabilities(self, devices: Iterable):
@@ -292,6 +293,15 @@ class DeviceBroker:
                 if not hasattr(platform_module, "get_capabilities"):
                     continue
                 assigned = platform_module.get_capabilities(capabilities)
+                # start components
+                for component in device.components:
+                    component_capabilities = platform_module.get_capabilities(device.components[component])
+                    if not component_capabilities:
+                        continue
+                    for component_capability in component_capabilities:
+                        ccid = ".".join([component, component_capability])
+                        slots[ccid] = platform
+                # end components
                 if not assigned:
                     continue
                 # Draw-down capabilities and set slot assignment

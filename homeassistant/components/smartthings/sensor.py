@@ -573,11 +573,17 @@ async def async_setup_entry(
                     ]
                 )
             else:
-                maps = CAPABILITY_TO_SENSORS[capability]
+                capToCheck = capability
+                component = None
+                if "." in capability:
+                    component = capability.split(".", 1)[0]
+                    capToCheck = capability.split(".", 1)[1]
+                maps = CAPABILITY_TO_SENSORS[capToCheck]
                 entities.extend(
                     [
                         SmartThingsSensor(
                             device,
+                            component,
                             m.attribute,
                             m.name,
                             m.default_unit,
@@ -591,11 +597,17 @@ async def async_setup_entry(
 
         if broker.any_assigned(device.device_id, "switch"):
             for capability in (Capability.energy_meter, Capability.power_meter):
-                maps = CAPABILITY_TO_SENSORS[capability]
+                capToCheck = capability
+                component = None
+                if "." in capability:
+                    component = capability.split(".", 1)[0]
+                    capToCheck = capability.split(".", 1)[1]
+                maps = CAPABILITY_TO_SENSORS[capToCheck]
                 entities.extend(
                     [
                         SmartThingsSensor(
                             device,
+                            component,
                             m.attribute,
                             m.name,
                             m.default_unit,
@@ -623,6 +635,7 @@ class SmartThingsSensor(SmartThingsEntity, SensorEntity):
     def __init__(
         self,
         device: DeviceEntity,
+        component: str | None,
         attribute: str,
         name: str,
         default_unit: str,
@@ -632,6 +645,7 @@ class SmartThingsSensor(SmartThingsEntity, SensorEntity):
     ) -> None:
         """Init the class."""
         super().__init__(device)
+        self._component = component
         self._attribute = attribute
         self._name = name
         self._device_class = device_class
@@ -642,12 +656,19 @@ class SmartThingsSensor(SmartThingsEntity, SensorEntity):
     @property
     def name(self) -> str:
         """Return the name of the binary sensor."""
-        return f"{self._device.label} {self._name}"
+        if not self._component:
+            return f"{self._device.label} {self._name}"
+        else:
+            return f"{self._device.label} {self._component} {self._name}"
+
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"{self._device.device_id}.{self._attribute}"
+        if not self._component:
+            return f"{self._device.device_id}.{self._attribute}"
+        else:
+            return f"{self._device.device_id}.{self._component}.{self._attribute}"
 
     @property
     def native_value(self):

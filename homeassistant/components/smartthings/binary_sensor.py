@@ -54,8 +54,13 @@ async def async_setup_entry(
     sensors = []
     for device in broker.devices.values():
         for capability in broker.get_assigned(device.device_id, "binary_sensor"):
-            attrib = CAPABILITY_TO_ATTRIB[capability]
-            sensors.append(SmartThingsBinarySensor(device, attrib))
+            capToCheck = capability
+            component = None
+            if "." in capability:
+                component = capability.split(".", 1)[0]
+                capToCheck = capability.split(".", 1)[1]
+            attrib = CAPABILITY_TO_ATTRIB[capToCheck]
+            sensors.append(SmartThingsBinarySensor(device, component, attrib))
     async_add_entities(sensors)
 
 
@@ -69,20 +74,27 @@ def get_capabilities(capabilities: Sequence[str]) -> Sequence[str] | None:
 class SmartThingsBinarySensor(SmartThingsEntity, BinarySensorEntity):
     """Define a SmartThings Binary Sensor."""
 
-    def __init__(self, device, attribute):
+    def __init__(self, device, component: str | None, attribute):
         """Init the class."""
         super().__init__(device)
+        self._component = component
         self._attribute = attribute
 
     @property
     def name(self) -> str:
         """Return the name of the binary sensor."""
-        return f"{self._device.label} {self._attribute}"
+        if not self._component:
+            return f"{self._device.label} {self._attribute}"
+        else:
+            return f"{self._device.label} {self._component} {self._attribute}"
 
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return f"{self._device.device_id}.{self._attribute}"
+        if not self._component:
+            return f"{self._device.device_id}.{self._attribute}"
+        else:
+            return f"{self._device.device_id}.{self._component}.{self._attribute}"
 
     @property
     def is_on(self):
